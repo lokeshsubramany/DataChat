@@ -1,0 +1,99 @@
+The Chinook database is a sample database used for learning and practicing SQL. It mimics a digital media store, including tables for artists, albums, media tracks, invoices, customers, and employees. Here's an overview of the schema:
+
+Tables and their columns:
+Artist
+
+ArtistId (INTEGER, Primary Key)
+Name (NVARCHAR)
+Album
+
+AlbumId (INTEGER, Primary Key)
+Title (NVARCHAR)
+ArtistId (INTEGER, Foreign Key referencing Artist)
+Track
+
+TrackId (INTEGER, Primary Key)
+Name (NVARCHAR)
+AlbumId (INTEGER, Foreign Key referencing Album)
+MediaTypeId (INTEGER, Foreign Key referencing MediaType)
+GenreId (INTEGER, Foreign Key referencing Genre)
+Composer (NVARCHAR)
+Milliseconds (INTEGER)
+Bytes (INTEGER)
+UnitPrice (NUMERIC)
+MediaType
+
+MediaTypeId (INTEGER, Primary Key)
+Name (NVARCHAR)
+Genre
+
+GenreId (INTEGER, Primary Key)
+Name (NVARCHAR)
+Invoice
+
+InvoiceId (INTEGER, Primary Key)
+CustomerId (INTEGER, Foreign Key referencing Customer)
+InvoiceDate (DATETIME)
+BillingAddress (NVARCHAR)
+BillingCity (NVARCHAR)
+BillingState (NVARCHAR)
+BillingCountry (NVARCHAR)
+BillingPostalCode (NVARCHAR)
+Total (NUMERIC)
+InvoiceLine
+
+InvoiceLineId (INTEGER, Primary Key)
+InvoiceId (INTEGER, Foreign Key referencing Invoice)
+TrackId (INTEGER, Foreign Key referencing Track)
+UnitPrice (NUMERIC)
+Quantity (INTEGER)
+Customer
+
+CustomerId (INTEGER, Primary Key)
+FirstName (NVARCHAR)
+LastName (NVARCHAR)
+Company (NVARCHAR)
+Address (NVARCHAR)
+City (NVARCHAR)
+State (NVARCHAR)
+Country (NVARCHAR)
+PostalCode (NVARCHAR)
+Phone (NVARCHAR)
+Fax (NVARCHAR)
+Email (NVARCHAR)
+SupportRepId (INTEGER, Foreign Key referencing Employee)
+Employee
+
+EmployeeId (INTEGER, Primary Key)
+LastName (NVARCHAR)
+FirstName (NVARCHAR)
+Title (NVARCHAR)
+ReportsTo (INTEGER, Foreign Key referencing Employee itself)
+BirthDate (DATETIME)
+HireDate (DATETIME)
+Address (NVARCHAR)
+City (NVARCHAR)
+State (NVARCHAR)
+Country (NVARCHAR)
+PostalCode (NVARCHAR)
+Phone (NVARCHAR)
+Fax (NVARCHAR)
+Email (NVARCHAR)
+Playlist
+
+PlaylistId (INTEGER, Primary Key)
+Name (NVARCHAR)
+PlaylistTrack
+
+PlaylistId (INTEGER, Primary Key, Foreign Key referencing Playlist)
+TrackId (INTEGER, Primary Key, Foreign Key referencing Track)
+Relationships:
+An Artist has many Albums.
+An Album belongs to an Artist and has many Tracks.
+A Track belongs to an Album, a MediaType, and a Genre.
+An Invoice is associated with a Customer and contains multiple InvoiceLines.
+An InvoiceLine is linked to an Invoice and a Track.
+A Customer is served by an Employee (SupportRep).
+An Employee can have a supervisor (another Employee).
+A Playlist contains multiple Tracks, and a Track can appear in multiple Playlists through the PlaylistTrack table.
+This schema provides a comprehensive structure for managing digital media store data, making it a great resource for practicing complex SQL queries and database management tasks.
