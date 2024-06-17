@@ -2,9 +2,6 @@
 from PIL import Image
 from langchain_community.llms import HuggingFaceEndpoint
 
-huggingfacehub_api_token='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'
-
-
 
 def send_to_llm(user_query):
 
