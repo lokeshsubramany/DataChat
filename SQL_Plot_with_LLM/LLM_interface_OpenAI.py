@@ -6,11 +6,12 @@ from dotenv import load_dotenv, dotenv_values
 from PIL import Image
 from io import BytesIO,StringIO
 import time
-import datetime
-import pandas as pd
+from db_interface import *
+import os
+import streamlit as st
+  
 
-
-def handle_file_to_llm(user_query,file_data):
+def send_file_to_llm(user_query,file_data):
 
     """
     Handles interaction with the OpenAI API to process a file and generate a response based on the user query.
@@ -139,7 +140,7 @@ def handle_file_to_llm(user_query,file_data):
         print(f"Error retrieving image: {e}")
         return response_text
 
-    
+#@st.cache_resource(ttl=1000)
 def send_to_llm(user_query):
     """
     Main function to interact with the LLM. Determines whether a file is provided and routes the request accordingly.
@@ -154,7 +155,6 @@ def send_to_llm(user_query):
     """
 
     load_dotenv()
-
    
     # Define the LLM
     client = OpenAI()
@@ -163,7 +163,8 @@ def send_to_llm(user_query):
         completion = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful data analyst"},
+                {"role": "system", "content": "You are a helpful data analyst.\
+                 Use only the information provided in the text to answer the question."},
                 {"role": "user", "content": user_query}
             ]
         )
@@ -176,4 +177,93 @@ def send_to_llm(user_query):
     return response
 
 
+def get_sql_prompt(user_query,db_description):
+    schema_template = "Here is the schema of a database. "+db_description\
+    +"\n Write a SQL query to answer the following question. Provide only the SQL and nothing else\n"\
+    +"Use explicit column names in the SQL. Ensure there are no ambiguous column names."
 
+    user_request = schema_template+user_query
+    return user_request
+
+def get_code_prompt_for_plotting(user_query,df):
+    request = "Here is a sample dataframe\n "+ df.head(10).to_string() \
+    + "\n Provide only Python code to answer the question and nothing else. "\
+    + "Assume that the data is available in a dataframe df, and use only data from the sample provided. "\
+    + "Don't include any data in the code. Ensure you import all required libraries "\
+    + "Any plots should have a size of 10,5 and a dpi of 300. \
+      Use seaborn to generate the plots and use the viridis colormap if it isn't specified in the question.\
+     Save the image as a png in the current directory with the name plot_image.png\
+        Question: "
+    request += user_query
+    return request
+
+def execute_code(code,data):
+    try:
+        #df = data
+        exec(code,{'df':data})
+        print(os.getcwd())
+    except Exception as e:
+        print(e)
+
+def get_code_and_generate_plot(user_query,data):
+    filepath = os.path.join(os.getcwd(),"plot_image.png")
+    
+    print(filepath)
+    #Delete any existing image file
+    if os.path.isfile("plot_image.png"):        
+        os.remove(filepath)
+
+    code_request = get_code_prompt_for_plotting(user_query,data.head(10))
+
+    code = send_to_llm(code_request)[10:-3]
+    
+    execute_code(code, data)
+
+    try:
+        
+        img = Image.open(filepath)
+        #os.remove(filepath)
+        return img
+    except:
+        print("Image file not found")
+        return code
+
+def plot_or_not(user_query):
+    #Check if it's a plotting request or data analysis request
+    response = send_to_llm("Does the following user query have any instructions to generate an image of a plot. \
+                           Respond Yes or No. Do not add any other text. User query:"+user_query)
+    print('Plot or not result is ',response)
+    return response
+
+def analyze_db_data(user_query):
+
+    db_description = get_db_description()
+    sql_request = get_sql_prompt(user_query,db_description)
+
+    sql_query = send_to_llm(sql_request)[7:-3]
+
+    data = get_data_from_db(sql_query)
+    print(data.head())
+
+    is_plot = plot_or_not(user_query)
+    if is_plot == "Yes":
+        response = get_code_and_generate_plot(user_query,data)
+    else:
+        response = send_file_to_llm(user_query,data)
+    return response
+
+    
+def analyze_file_data(user_query,file_data):
+    
+    decision = plot_or_not(user_query)
+    
+    if decision == "No":
+        response = send_file_to_llm(user_query,file_data)
+        
+        return response
+    else:
+        print("The data type of the file data is ", type(file_data))
+        response = get_code_and_generate_plot(user_query,file_data)
+        return response
+
+    
