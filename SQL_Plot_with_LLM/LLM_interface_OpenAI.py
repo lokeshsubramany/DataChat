@@ -1,4 +1,3 @@
-
 from PIL import Image
 import openai
 from openai import OpenAI
@@ -11,7 +10,8 @@ import os
 import streamlit as st
   
 
-def send_file_to_llm(user_query,file_data):
+def send_file_to_llm(user_query, file_data):
+    print("Function: send_file_to_llm")
 
     """
     Handles interaction with the OpenAI API to process a file and generate a response based on the user query.
@@ -142,6 +142,7 @@ def send_file_to_llm(user_query,file_data):
 
 #@st.cache_resource(ttl=1000)
 def send_to_llm(user_query):
+    print("Function: send_to_llm")
     """
     Main function to interact with the LLM. Determines whether a file is provided and routes the request accordingly.
 
@@ -179,16 +180,18 @@ def send_to_llm(user_query):
     return response
 
 
-def get_sql_prompt(user_query,db_description):
+def get_sql_prompt(user_query, db_description):
+    print("Function: get_sql_prompt")
     schema_template = "Here is the schema of a database. "+db_description\
     +"\n Write a SQL query to gather data to answer the following question. Provide only the SQL and nothing else\n"\
     +"Use explicit column names in the SQL. Only use columns and tables present in the text.\
         Ensure there are no ambiguous column names."
 
-    user_request = schema_template+user_query
+    user_request = schema_template + user_query
     return user_request
 
 def get_prompt_to_fix_db_error(sql_query, error):
+    print("Function: get_prompt_to_fix_db_error")
     fix_sql_query_prompt = "You are an expert at writing SQL. Here is the schema and description of the database"\
         + get_db_description() + " This is a SQL query and the error associated with the query.\n \
             SQL and error: " + sql_query + '\n' + error \
@@ -196,8 +199,8 @@ def get_prompt_to_fix_db_error(sql_query, error):
         
     return fix_sql_query_prompt
 
-def get_code_prompt_for_plotting(user_query,cols):
-    print("\nIn get_code_prompt_for_plotting ")
+def get_code_prompt_for_plotting(user_query, cols):
+    print("Function: get_code_prompt_for_plotting")
     request = """
     You are an expert at writing python code. You are give the columns of a dataframe.
     Provide only Python code to create a plot to answer the question and nothing else. Do not add any notes.
@@ -231,13 +234,12 @@ def get_code_prompt_for_plotting(user_query,cols):
     
     Now, answer the question below
     Question: 
-    Here are the columns of the dataframe """+ cols + ". "+user_query+ "\n"
+    Here are the columns of the dataframe """ + cols + ". " + user_query + "\n"
     #print(request)
     return request
 
 def get_prompt_to_fix_python_error(code, error):
-    print("\n In get_prompt_to_fix_python_error")
-
+    print("Function: get_prompt_to_fix_python_error")
     fix_python_error_prompt = """
     You are an expert at writing python code. Here's the code and error associated with the code.
     Fix the error and return only the python code. Do not add any other characters.
@@ -290,8 +292,8 @@ def get_prompt_to_fix_python_error(code, error):
     """ + code + '\n' + error
     
 
-def execute_code(code,data,exec_count = 0):
-    print("\n In execute code, with count = ", exec_count)
+def execute_code(code, data, exec_count=0):
+    print("Function: execute_code, with count =", exec_count)
 
     filepath = os.path.join(os.getcwd(),"plot_image.png")    
     print(filepath)
@@ -302,13 +304,13 @@ def execute_code(code,data,exec_count = 0):
 
     try:
         #df = data
-        exec(code,{'df':data})
+        exec(code, {'df':data})
         print(os.getcwd())
     except Exception as e:
         if exec_count < 1:
             exec_count +=1
-            print("Error executing code ",e)
-            error = getattr(e,'message',repr(e))
+            print("Error executing code ", e)
+            error = getattr(e, 'message', repr(e))
 
             fix_python_error_prompt = get_prompt_to_fix_python_error(code, error) 
             print("Fix error prompt is ", fix_python_error_prompt)       
@@ -325,9 +327,10 @@ def execute_code(code,data,exec_count = 0):
         print("Image file not found")
         return code
 
-def get_code_and_generate_plot(user_query,data):    
+def get_code_and_generate_plot(user_query, data):    
+    print("Function: get_code_and_generate_plot")
 
-    code_request = get_code_prompt_for_plotting(user_query,",".join(data.columns))
+    code_request = get_code_prompt_for_plotting(user_query, ",".join(data.columns))
 
     code = send_to_llm(code_request)[10:-3]
     print("Received code is ", code)
@@ -335,6 +338,7 @@ def get_code_and_generate_plot(user_query,data):
     return response
 
 def plot_or_not(user_query):
+    print("Function: plot_or_not")
     #Check if it's a plotting request or data analysis request
     plot_or_not_prompt ="""
     You are an expert at understanding language. Is there an intent to create a 
@@ -352,39 +356,39 @@ def plot_or_not(user_query):
     Now answer the following user query
     User query:
     """
-    response = send_to_llm(plot_or_not_prompt+user_query)
-    print('Plot or not result is ',response)
+    response = send_to_llm(plot_or_not_prompt + user_query)
+    print('Plot or not result is ', response)
     return response
 
 def analyze_db_data(user_query):
+    print("Function: analyze_db_data")
 
     db_description = get_db_description()
-    sql_request = get_sql_prompt(user_query,db_description)
+    sql_request = get_sql_prompt(user_query, db_description)
 
     sql_query = send_to_llm(sql_request)[7:-3]
 
     data = get_data_from_db(sql_query)
-    print("Here's the data",data.head())
+    print("Here's the data", data.head())
 
     is_plot = plot_or_not(user_query)
     if is_plot == "True":
-        response = get_code_and_generate_plot(user_query,data)
+        response = get_code_and_generate_plot(user_query, data)
         return response
     #else:
-        #response = send_file_to_llm(user_query,data)
+        #response = send_file_to_llm(user_query, data)
     return data
 
     
-def analyze_file_data(user_query,file_data):
+def analyze_file_data(user_query, file_data):
+    print("Function: analyze_file_data")
     
     decision = plot_or_not(user_query)
     
     if decision == "No":
-        response = send_file_to_llm(user_query,file_data)        
+        response = send_file_to_llm(user_query, file_data)        
         return response
     else:
         print("The data type of the file data is ", type(file_data))
-        response = get_code_and_generate_plot(user_query,file_data)
+        response = get_code_and_generate_plot(user_query, file_data)
         return response
-
-    
