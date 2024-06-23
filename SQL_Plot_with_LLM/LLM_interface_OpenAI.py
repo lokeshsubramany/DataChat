@@ -236,7 +236,7 @@ def get_code_prompt_for_plotting(user_query,cols):
     return request
 
 def get_prompt_to_fix_python_error(code, error):
-    print("\n IN get_prompt_to_fix_python_error")
+    print("\n In get_prompt_to_fix_python_error")
 
     fix_python_error_prompt = """
     You are an expert at writing python code. Here's the code and error associated with the code.
@@ -291,7 +291,7 @@ def get_prompt_to_fix_python_error(code, error):
     
 
 def execute_code(code,data,exec_count = 0):
-    print("\n In execute code with count = ", exec_count)
+    print("\n In execute code, with count = ", exec_count)
 
     filepath = os.path.join(os.getcwd(),"plot_image.png")    
     print(filepath)
@@ -310,7 +310,8 @@ def execute_code(code,data,exec_count = 0):
             print("Error executing code ",e)
             error = getattr(e,'message',repr(e))
 
-            fix_python_error_prompt = get_prompt_to_fix_python_error(code, error)        
+            fix_python_error_prompt = get_prompt_to_fix_python_error(code, error) 
+            print("Fix error prompt is ", fix_python_error_prompt)       
             code = send_to_llm(fix_python_error_prompt)[10:-3]
 
             return_obj = execute_code(code, data, exec_count)
@@ -329,7 +330,7 @@ def get_code_and_generate_plot(user_query,data):
     code_request = get_code_prompt_for_plotting(user_query,",".join(data.columns))
 
     code = send_to_llm(code_request)[10:-3]
-    
+    print("Received code is ", code)
     response = execute_code(code, data)    
     return response
 
