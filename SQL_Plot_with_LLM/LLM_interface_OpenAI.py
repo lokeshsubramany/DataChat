@@ -161,10 +161,12 @@ def send_to_llm(user_query):
 
     try:
         completion = client.chat.completions.create(
+            #model="gpt-4o",
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful data analyst.\
-                 Use only the information provided in the text to answer the question."},
+                {"role": "system", "content": "You are a helpful data analyst who is an expert in SQL, \
+                 python and in creating static visualizations.\
+                 Use only the information provided in the text to answer the question. Respond in a fun upbeat tone."},
                 {"role": "user", "content": user_query}
             ]
         )
@@ -179,48 +181,142 @@ def send_to_llm(user_query):
 
 def get_sql_prompt(user_query,db_description):
     schema_template = "Here is the schema of a database. "+db_description\
-    +"\n Write a SQL query to answer the following question. Provide only the SQL and nothing else\n"\
-    +"Use explicit column names in the SQL. Ensure there are no ambiguous column names."
+    +"\n Write a SQL query to gather data to answer the following question. Provide only the SQL and nothing else\n"\
+    +"Use explicit column names in the SQL. Only use columns and tables present in the text.\
+        Ensure there are no ambiguous column names."
 
     user_request = schema_template+user_query
     return user_request
 
-def get_code_prompt_for_plotting(user_query,df):
-    request = "Here is a sample dataframe\n "+ df.head(10).to_string() \
-    + "\n Provide only Python code to answer the question and nothing else. "\
-    + "Assume that the data is available in a dataframe df, and use only data from the sample provided. "\
-    + "Don't include any data in the code. Ensure you import all required libraries "\
-    + "Any plots should have a size of 10,5 and a dpi of 300. \
-      Use seaborn to generate the plots and use the viridis colormap if it isn't specified in the question.\
-     Save the image as a png in the current directory with the name plot_image.png\
-        Question: "
-    request += user_query
+def get_prompt_to_fix_db_error(sql_query, error):
+    fix_sql_query_prompt = "You are an expert at writing SQL. Here is the schema and description of the database"\
+        + get_db_description() + " This is a SQL query and the error associated with the query.\n \
+            SQL and error: " + sql_query + '\n' + error \
+        + "Fix the error and return only SQL"
+        
+    return fix_sql_query_prompt
+
+def get_code_prompt_for_plotting(user_query,cols):
+    print("\nIn get_code_prompt_for_plotting ")
+    request = """
+    You are an expert at writing python code. You are give the columns of a dataframe.
+    Provide only Python code to create a plot to answer the question and nothing else. Do not add any notes.
+    Do not create or initialize a new dataframe. Use provided data. Import all necessary libraries. 
+    Any plots should have a size of 10,6 and a dpi of 300. Use matplotlib or seaborn and the viridis colormap to generate the plots. 
+    Save the image as a png in the current directory with the name plot_image.png. 
+    Check for potential errors in the code and correct them. Use seaborn for heatmap, matplotlib for pie chart.
+    Here's an example
+
+    Question:Here are the columns of the dataframe Genre,TotalSales. Create a bar chart to show the total sales for each music genre
+    Response:
+    import matplotlib.pyplot as plt
+    from matplotlib import rcParams
+
+    # Set figure size and DPI
+    rcParams['figure.figsize'] = 10,6
+    rcParams['figure.dpi'] = 300
+
+    # Group by Genre and sum TotalSales
+    genre_grouped = df.groupby('Genre')['TotalSales'].sum()
+
+    # Create bar chart
+    plt.bar(genre_grouped.index, genre_grouped.values)
+
+    plt.xlabel('Genre')
+    plt.ylabel('Total Sales')
+    plt.title('Total Sales per Music Genre')
+
+    # Save plot as png
+    plt.savefig('plot_image.png')
+    
+    Now, answer the question below
+    Question: 
+    Here are the columns of the dataframe """+ cols + ". "+user_query+ "\n"
+    #print(request)
     return request
 
-def execute_code(code,data):
+def get_prompt_to_fix_python_error(code, error):
+    print("\n IN get_prompt_to_fix_python_error")
+
+    fix_python_error_prompt = """
+    You are an expert at writing python code. Here's the code and error associated with the code.
+    Fix the error and return only the python code. Do not add any other characters.
+    Here's an example
+    Code and error:
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        #Set figure size and DPI
+        rcParams['figure.figsize'] = 10,5 rcParams['figure.dpi'] = 300
+
+        #Pivot table to rearrange data
+        pivot_table = df.pivot_table(values='Popularity', index='Country', columns='Genre')
+
+        #Create heatmap
+        sns.heatmap(pivot_table, cmap='viridis')
+
+        #Add labels and title
+        plt.xlabel('Genre') plt.ylabel('Country') plt.title('Heatmap of Genre Popularity by Country')
+
+        #Save plot as png
+        plt.savefig('plot_image.png')
+
+        In execute_code Error executing code name 'rcParams' is not defined
+        Response:                
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        from matplotlib import pyplot
+
+        # Set figure size and DPI
+        pyplot.rcParams['figure.figsize'] = 10,5
+        pyplot.rcParams['figure.dpi'] = 300
+
+        # Pivot table to rearrange data
+        pivot_table = df.pivot_table(values='Popularity', index='Country', columns='Genre')
+
+        # Create heatmap
+        sns.heatmap(pivot_table, cmap='viridis')
+
+        # Add labels and title
+        plt.xlabel('Genre')
+        plt.ylabel('Country')
+        plt.title('Heatmap of Genre Popularity by Country')
+
+        # Save plot as png
+        plt.savefig('plot_image.png')
+        
+        Now, answer the following
+        Code and Error:
+    """ + code + '\n' + error
+    
+
+def execute_code(code,data,exec_count = 0):
+    print("\n In execute code with count = ", exec_count)
+
+    filepath = os.path.join(os.getcwd(),"plot_image.png")    
+    print(filepath)
+
+    #Delete any existing image file
+    if os.path.isfile("plot_image.png"):        
+        os.remove(filepath)
+
     try:
         #df = data
         exec(code,{'df':data})
         print(os.getcwd())
     except Exception as e:
-        print(e)
+        if exec_count < 1:
+            exec_count +=1
+            print("Error executing code ",e)
+            error = getattr(e,'message',repr(e))
 
-def get_code_and_generate_plot(user_query,data):
-    filepath = os.path.join(os.getcwd(),"plot_image.png")
-    
-    print(filepath)
-    #Delete any existing image file
-    if os.path.isfile("plot_image.png"):        
-        os.remove(filepath)
+            fix_python_error_prompt = get_prompt_to_fix_python_error(code, error)        
+            code = send_to_llm(fix_python_error_prompt)[10:-3]
 
-    code_request = get_code_prompt_for_plotting(user_query,data.head(10))
+            return_obj = execute_code(code, data, exec_count)
+        return return_obj
 
-    code = send_to_llm(code_request)[10:-3]
-    
-    execute_code(code, data)
-
-    try:
-        
+    try:        
         img = Image.open(filepath)
         #os.remove(filepath)
         return img
@@ -228,10 +324,34 @@ def get_code_and_generate_plot(user_query,data):
         print("Image file not found")
         return code
 
+def get_code_and_generate_plot(user_query,data):    
+
+    code_request = get_code_prompt_for_plotting(user_query,",".join(data.columns))
+
+    code = send_to_llm(code_request)[10:-3]
+    
+    response = execute_code(code, data)    
+    return response
+
 def plot_or_not(user_query):
     #Check if it's a plotting request or data analysis request
-    response = send_to_llm("Does the following user query have any instructions to generate an image of a plot. \
-                           Respond Yes or No. Do not add any other text. User query:"+user_query)
+    plot_or_not_prompt ="""
+    You are an expert at understanding language. Is there an intent to create a 
+    plot in the user query? Respond True or False only. Do not add any other text
+    or characters. Here are some examples
+    User query: Create a pie plot of the top 10 artists
+    Response: True
+
+    User query: Create a heatmap of the popularity of the genre by country
+    Response: True
+
+    User query: Who are the top 10 artists by sales
+    Response: False
+
+    Now answer the following user query
+    User query:
+    """
+    response = send_to_llm(plot_or_not_prompt+user_query)
     print('Plot or not result is ',response)
     return response
 
@@ -243,14 +363,15 @@ def analyze_db_data(user_query):
     sql_query = send_to_llm(sql_request)[7:-3]
 
     data = get_data_from_db(sql_query)
-    print(data.head())
+    print("Here's the data",data.head())
 
     is_plot = plot_or_not(user_query)
-    if is_plot == "Yes":
+    if is_plot == "True":
         response = get_code_and_generate_plot(user_query,data)
-    else:
-        response = send_file_to_llm(user_query,data)
-    return response
+        return response
+    #else:
+        #response = send_file_to_llm(user_query,data)
+    return data
 
     
 def analyze_file_data(user_query,file_data):
@@ -258,8 +379,7 @@ def analyze_file_data(user_query,file_data):
     decision = plot_or_not(user_query)
     
     if decision == "No":
-        response = send_file_to_llm(user_query,file_data)
-        
+        response = send_file_to_llm(user_query,file_data)        
         return response
     else:
         print("The data type of the file data is ", type(file_data))

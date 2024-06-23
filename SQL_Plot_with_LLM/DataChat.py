@@ -7,14 +7,15 @@ import PIL
 from LLM_interface_OpenAI import *
 
 
-st.title("Chat with your data or database")
+#st.title("Chat with your data")
+st.header('Chat with your data', divider='rainbow')
 
 if 'responses' not in st.session_state:
     st.session_state.responses = []
 
-with st.sidebar:
-    st.write("### Session state")
-    st.session_state
+# with st.sidebar:
+#     st.write("### Session state")
+#     st.session_state
 
 file_data = None
 
@@ -70,12 +71,12 @@ with st.container():
     
 
 
-    functionality = st.radio(label='Functionality',\
+    functionality = st.radio(label='What would you like to do?',\
                              options=['Ask a question','Analyze a file','Ask a database'],\
                                 horizontal=True,key='functionality')
-    st.write("You selected:",functionality)
+    #st.write("You selected:",functionality)
 
-    uploaded_file = st.file_uploader("", type=['txt', 'csv'],key='Uploaded_file') 
+    uploaded_file = st.file_uploader("Load your file for analysis", type=['txt', 'csv'],key='Uploaded_file') 
     with st.expander("Uploaded Sample"):                        
 
         if uploaded_file:
@@ -97,20 +98,20 @@ with st.container(height=768):
         st.markdown(f"**You:** {user_input}")
         #print(type(response))
         if isinstance(response, str):
-            st.markdown(f"**Assistant:** {response}")
+            st.markdown(f":rainbow[**Assistant:**] {response}")
             st.markdown("------------------------------------------")
         elif isinstance(response, PIL.Image.Image):
-            st.markdown("**Assistant:**")
+            st.markdown(":rainbow[**Assistant:**]")
             st.image(response)
             st.markdown("------------------------------------------")
         elif isinstance(response, pd.DataFrame):
-            st.markdown("**Assistant:**")
+            st.markdown(":rainbow[**Assistant:**]")
             st.dataframe(response)
             st.markdown("------------------------------------------")
         # elif isinstance(response, PIL.PngImagePlugin.PngImageFile):
         #     st.markdown("**Assistant Image:**")
         #     st.image(response)
         else:
-            st.markdown("**Assistant:**")
+            st.markdown(":rainbow[**Assistant:**]")
             st.image(response)
             st.markdown("------------------------------------------")

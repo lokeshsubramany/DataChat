@@ -20,6 +20,7 @@ def get_data_from_db(sql_query):
         conn = sqlite3.connect('Chinook.db')
         df = pd.read_sql(sql_query,conn)
         #print(df.head())
+        df.to_csv('data.csv',index=False)
         conn.close()
         return df
     except Exception as e:
