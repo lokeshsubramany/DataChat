@@ -1,0 +1,44 @@
+Question:Here are the columns of the dataframe Genre,TotalSales. Create a bar chart to show the total sales for each music genre
+Response:
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+
+# Set figure size and DPI
+plt.rcParams['figure.figsize'] = 10,6
+plt.rcParams['figure.dpi'] = 300
+
+# Group by Genre and sum TotalSales
+genre_grouped = df.groupby('Genre')['TotalSales'].sum()
+
+# Create bar chart
+plt.bar(genre_grouped.index, genre_grouped.values)
+
+plt.xlabel('Genre')
+plt.ylabel('Total Sales')
+plt.title('Total Sales per Music Genre')
+
+# Save plot as png
+plt.savefig('plot_image.png')
+**
+Question:Here are the columns of the dataframe Artist_Name,Total_Sales. Create a pie chart
+Response:
+import matplotlib.pyplot as plt 
+import pandas as pd
+
+plt.figure(figsize=(10, 6), dpi=300) 
+plt.pie(df['Total_Sales'], labels=df['Artist_Name'],  autopct='%1.1f%%') 
+plt.axis('equal') 
+plt.savefig('plot_image.png')
+**
+Question:Here are the columns of the dataframe A, B, C, D. Create a scatter plot of the columns A and B
+Response:
+import pandas as pd
+import matplotlib.pyplot as plt
+
+plt.rcParams['figure.figsize'] = 10,6
+plt.rcParams['figure.dpi'] = 300
+
+df = pd.DataFrame({'A':[1,1,1,1,1], 'B':[2,2,2,2,2,]})
+
+plt.scatter(x=df['A'], y=df['B'])
+plt.show()
